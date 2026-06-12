@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LinkedIn Post Analytics Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f3;
+      color: #1a1a18;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a18; color: #f0efe8; }
+      .card { background: #2c2c2a !important; border-color: rgba(255,255,255,0.1) !important; }
+      .metric-card { background: #2c2c2a !important; border-color: rgba(255,255,255,0.08) !important; }
+      .metric-card:hover { border-color: rgba(255,255,255,0.2) !important; }
+      .bar-track { background: #3a3a38 !important; }
+      .summary-bar { background: #3a3a38 !important; }
+      .pill-btn { color: #a0a09a !important; border-color: rgba(255,255,255,0.15) !important; }
+      .pill-btn:hover { background: #3a3a38 !important; }
+      .info-box { background: #2c2c2a !important; }
+      .stat-row { border-color: rgba(255,255,255,0.07) !important; }
+      .muted { color: #a0a09a; }
+      .post-btn { background: #2c2c2a !important; border-color: rgba(255,255,255,0.1) !important; }
+      .post-btn:hover { border-color: rgba(255,255,255,0.25) !important; background: #3a3a38 !important; }
+      .post-btn.active { border-color: #7F77DD !important; background: #1e1c38 !important; }
+      .post-snippet { color: #f0efe8 !important; }
+      .post-date { color: #a0a09a !important; }
+    }
+    .wrapper { max-width: 760px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border: 0.5px solid rgba(0,0,0,0.1);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    /* ---- Post selector ---- */
+    .post-selector-label {
+      font-size: 11px; font-weight: 500; color: #888; text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 10px;
+    }
+    .post-selector {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem;
+      padding-bottom: 1.25rem; border-bottom: 0.5px solid rgba(0,0,0,0.07);
+    }
+    .post-btn {
+      flex: 1; min-width: 140px; max-width: 200px;
+      background: #fff; border: 0.5px solid rgba(0,0,0,0.12);
+      border-radius: 10px; padding: 10px 14px;
+      cursor: pointer; text-align: left; font-family: inherit;
+      transition: border-color 0.14s, background 0.14s;
+      position: relative;
+    }
+    .post-btn:hover { border-color: rgba(0,0,0,0.28); background: #fafaf8; }
+    .post-btn.active { border: 1.5px solid #534AB7; background: #f4f3fd; }
+    .post-btn.active .post-snippet { color: #534AB7; }
+    .post-snippet {
+      font-size: 12px; font-weight: 500; color: #1a1a18;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; line-height: 1.4; margin-bottom: 6px;
+    }
+    .post-date { font-size: 11px; color: #888; }
+    .post-badge {
+      position: absolute; top: 8px; right: 8px;
+      background: #EAF3DE; color: #3B6D11;
+      font-size: 10px; font-weight: 500; padding: 1px 7px;
+      border-radius: 20px;
+    }
+    .post-btn-placeholder {
+      flex: 1; min-width: 160px; max-width: 240px;
+      border: 0.5px dashed rgba(0,0,0,0.15); border-radius: 10px;
+      padding: 10px 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: #aaa;
+    }
+
+    /* ---- Header ---- */
+    .top-row {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 10px; margin-bottom: 1rem;
+    }
+    h1 { font-size: 17px; font-weight: 500; }
+    .meta { font-size: 12px; color: #5f5e5a; margin-top: 3px; }
+
+    /* ---- View pills ---- */
+    .pill-row { display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill-btn {
+      border: 0.5px solid rgba(0,0,0,0.18); border-radius: 20px;
+      padding: 5px 14px; font-size: 12px; background: transparent;
+      color: #5f5e5a; cursor: pointer; font-family: inherit;
+      transition: background 0.12s, color 0.12s;
+    }
+    .pill-btn:hover { background: #f0efe8; }
+    .pill-btn.active { background: #534AB7; color: #fff; border-color: #534AB7; }
+
+    /* ---- Metric cards ---- */
+    .metric-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px; margin-bottom: 1.25rem;
+    }
+    .metric-card {
+      cursor: pointer; border: 0.5px solid rgba(0,0,0,0.08);
+      border-radius: 10px; padding: 0.875rem; background: #fff;
+      transition: border-color 0.15s;
+    }
+    .metric-card:hover { border-color: rgba(0,0,0,0.2); }
+    .metric-card.active { border: 1.5px solid #534AB7; }
+    .metric-card.active .mc-label { color: #534AB7; }
+    .metric-card.active .mc-value { color: #534AB7; }
+    .mc-label { font-size: 11px; color: #5f5e5a; margin-bottom: 3px; }
+    .mc-value { font-size: 22px; font-weight: 500; }
+    .mc-sub { font-size: 11px; color: #a0a09a; margin-top: 3px; }
+
+    /* ---- Charts + breakdown ---- */
+    .section-label { font-size: 13px; font-weight: 500; margin-bottom: 0.75rem; }
+    .chart-wrap { position: relative; width: 100%; height: 260px; }
+    .chart-wrap-sm { position: relative; width: 100%; height: 240px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 10px; font-size: 12px; color: #5f5e5a; }
+    .ld { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .ll { width: 18px; height: 2px; display: inline-block; vertical-align: middle; }
+    .info-box {
+      margin-top: 1rem; padding: 0.75rem 1rem;
+      background: #f5f5f3; border-radius: 8px; font-size: 13px; color: #5f5e5a;
+    }
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar-label { font-size: 13px; color: #5f5e5a; min-width: 100px; }
+    .bar-track { flex: 1; background: #f0efe8; border-radius: 4px; height: 10px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; width: 0%; transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+    .bar-val { font-size: 13px; font-weight: 500; min-width: 24px; text-align: right; }
+    .bar-pct { font-size: 11px; color: #a0a09a; min-width: 40px; }
+    .stat-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0; border-bottom: 0.5px solid rgba(0,0,0,0.07); font-size: 13px;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .muted { color: #5f5e5a; }
+    .highlight { color: #534AB7; font-weight: 500; }
+    .summary-bar { background: #f0efe8; border-radius: 4px; height: 6px; overflow: hidden; margin-top: 6px; }
+    .summary-fill { height: 100%; border-radius: 4px; background: #534AB7; }
+    .note { font-size: 11px; color: #a0a09a; margin-top: 6px; }
+    footer { font-size: 11px; color: #a0a09a; text-align: center; margin-top: 0.5rem; }
+
+    /* ---- Best time heatmap ---- */
+    .time-grid { display: grid; grid-template-columns: 80px repeat(5,1fr); gap: 4px; margin-bottom: 1rem; }
+    .time-cell {
+      height: 36px; border-radius: 6px; display: flex;
+      align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 500;
+    }
+    .time-header { font-size: 11px; color: #888; text-align: center; padding: 4px 0; }
+    .time-label { font-size: 11px; color: #888; display: flex; align-items: center; }
+
+    /* ---- Trending titles ---- */
+    .title-row {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 0.5px solid rgba(0,0,0,0.07);
+    }
+    .title-row:last-child { border-bottom: none; }
+    .title-rank { font-size: 18px; font-weight: 500; color: #d3d1c7; min-width: 28px; }
+    .title-meta { flex: 1; }
+    .title-text { font-size: 13px; font-weight: 500; color: #1a1a18; margin-bottom: 3px; line-height: 1.4; }
+    .title-stats { font-size: 12px; color: #888; }
+    .title-bar-wrap { width: 90px; flex-shrink: 0; }
+    .title-bar-bg { background: #f0efe8; border-radius: 4px; height: 6px; margin-bottom: 3px; overflow: hidden; }
+    .title-bar-fill { height: 100%; border-radius: 4px; }
+    .title-er { font-size: 11px; color: #888; text-align: right; }
+    .topic-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 1rem; }
+    .chip {
+      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 500;
+      background: #f0efe8; color: #5f5e5a;
+    }
+    .chip.hot { background: #EAF3DE; color: #3B6D11; }
+    .chip.warm { background: #E6F1FB; color: #185FA5; }
+    @media (prefers-color-scheme: dark) {
+      .chip { background: #3a3a38 !important; color: #a0a09a !important; }
+      .chip.hot { background: #1e2e1a !important; color: #9FE1CB !important; }
+      .chip.warm { background: #1a2538 !important; color: #85B7EB !important; }
+      .title-text { color: #f0efe8 !important; }
+      .title-bar-bg { background: #3a3a38 !important; }
+      .time-label { color: #a0a09a !important; }
+      .time-header { color: #a0a09a !important; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="card">
+
+    <div class="top-row">
+      <div>
+        <h1>LinkedIn Post Analytics</h1>
+        <p class="meta" id="dash-meta">Loading...</p>
+      </div>
+      <div class="pill-row" id="view-pills">
+        <button class="pill-btn active" onclick="setView('overview')">Overview</button>
+        <button class="pill-btn" onclick="setView('breakdown')">Breakdown</button>
+        <button class="pill-btn" onclick="setView('trend')">Trend</button>
+        <button class="pill-btn" onclick="setView('besttime')">Best time</button>
+        <button class="pill-btn" onclick="setView('titles')">Top titles</button>
+      </div>
+    </div>
+
+    <!-- POST SELECTOR -->
+    <p class="post-selector-label">Select post</p>
+    <div class="post-selector" id="post-selector"></div>
+
+    <!-- Metric cards -->
+    <div class="metric-grid" id="metric-cards">
+      <div class="metric-card active" onclick="selectMetric(this)">
+        <div class="mc-label" style="color:#534AB7;">Impressions</div>
+        <div class="mc-value" id="cnt-impressions" style="color:#534AB7;">—</div>
+        <div class="mc-sub">total views</div>
+      </div>
+      <div class="metric-card" onclick="selectMetric(this)">
+        <div class="mc-label">Reached</div>
+        <div class="mc-value" id="cnt-reached">—</div>
+        <div class="mc-sub">members</div>
+      </div>
+      <div class="metric-card" onclick="selectMetric(this)">
+        <div class="mc-label">Reactions</div>
+        <div class="mc-value" id="cnt-reactions">—</div>
+        <div class="mc-sub">likes &amp; more</div>
+      </div>
+      <div class="metric-card" onclick="selectMetric(this)">
+        <div class="mc-label">Comments</div>
+        <div class="mc-value" id="cnt-comments">—</div>
+        <div class="mc-sub">replies</div>
+      </div>
+      <div class="metric-card" onclick="selectMetric(this)">
+        <div class="mc-label">Profile clicks</div>
+        <div class="mc-value" id="cnt-clicks">—</div>
+        <div class="mc-sub">from post</div>
+      </div>
+      <div class="metric-card" onclick="selectMetric(this)">
+        <div class="mc-label">Eng. rate</div>
+        <div class="mc-value" id="cnt-rate">—</div>
+        <div class="mc-sub">vs ~1–2% avg</div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div id="view-overview">
+      <div class="legend">
+        <span style="display:flex;align-items:center;gap:5px;"><span class="ld" style="background:#534AB7;"></span>Impressions</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span class="ld" style="background:#7F77DD;"></span>Reached</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span class="ld" style="background:#1D9E75;"></span>Reactions</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span class="ld" style="background:#5DCAA5;"></span>Comments</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span class="ld" style="background:#888780;"></span>Profile clicks</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="mainChart" role="img" aria-label="Bar chart comparing key metrics for selected post"></canvas>
+      </div>
+      <div class="info-box" id="info-box">—</div>
+    </div>
+
+    <!-- BREAKDOWN -->
+    <div id="view-breakdown" style="display:none;">
+      <p class="section-label">Engagement breakdown</p>
+      <div class="bar-row">
+        <span class="bar-label">Reactions</span>
+        <div class="bar-track"><div class="bar-fill" id="bar-reactions" style="background:#534AB7;"></div></div>
+        <span class="bar-val" id="bv-reactions">—</span><span class="bar-pct" id="bp-reactions"></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Profile clicks</span>
+        <div class="bar-track"><div class="bar-fill" id="bar-clicks" style="background:#888780;"></div></div>
+        <span class="bar-val" id="bv-clicks">—</span><span class="bar-pct" id="bp-clicks"></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Comments</span>
+        <div class="bar-track"><div class="bar-fill" id="bar-comments" style="background:#1D9E75;"></div></div>
+        <span class="bar-val" id="bv-comments">—</span><span class="bar-pct" id="bp-comments"></span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">Reposts</span>
+        <div class="bar-track"><div class="bar-fill" id="bar-reposts" style="background:#EF9F27;"></div></div>
+        <span class="bar-val" id="bv-reposts">—</span><span class="bar-pct" id="bp-reposts"></span>
+      </div>
+      <div style="margin-top:1.25rem;border-top:0.5px solid rgba(0,0,0,0.08);padding-top:1rem;">
+        <div class="stat-row"><span class="muted">Total social engagements</span><span style="font-weight:500;" id="st-total">—</span></div>
+        <div class="stat-row"><span class="muted">Impressions</span><span style="font-weight:500;" id="st-impressions">—</span></div>
+        <div class="stat-row"><span class="muted">Members reached</span><span style="font-weight:500;" id="st-reached">—</span></div>
+        <div class="stat-row"><span class="muted">Engagement rate</span><span class="highlight" id="st-er">—</span></div>
+        <div class="stat-row"><span class="muted">Followers gained</span><span style="font-weight:500;" id="st-followers">0</span></div>
+      </div>
+      <p style="font-size:12px;color:#5f5e5a;margin-top:1rem;">Followers · 599</p>
+      <div class="summary-bar"><div class="summary-fill" id="summary-fill" style="width:0%;"></div></div>
+      <p class="note" id="reached-note">—</p>
+    </div>
+
+    <!-- TREND -->
+    <div id="view-trend" style="display:none;">
+      <p style="font-size:12px;color:#5f5e5a;margin-bottom:10px;" id="trend-note">Impressions and reactions over tracked days</p>
+      <div class="pill-row" id="trend-pills" style="margin-bottom:10px;">
+        <button class="pill-btn active" onclick="setTrendMetric('both',this)">Both</button>
+        <button class="pill-btn" onclick="setTrendMetric('impressions',this)">Impressions</button>
+        <button class="pill-btn" onclick="setTrendMetric('reactions',this)">Reactions</button>
+      </div>
+      <div class="legend">
+        <span style="display:flex;align-items:center;gap:6px;"><span class="ll" style="background:#534AB7;"></span>Impressions</span>
+        <span style="display:flex;align-items:center;gap:6px;"><span class="ll" style="background:#1D9E75;"></span>Reactions</span>
+      </div>
+      <div class="chart-wrap-sm">
+        <canvas id="trendChart" role="img" aria-label="Line chart of impressions and reactions over time"></canvas>
+      </div>
+      <p class="note" style="margin-top:8px;">Trend line fills in daily as the scheduled task runs each morning at 8 AM.</p>
+    </div>
+
+    <!-- BEST TIME TO POST -->
+    <div id="view-besttime" style="display:none;">
+      <p class="section-label">Average impressions by day &amp; time slot</p>
+      <p style="font-size:12px;color:#888;margin-bottom:14px;">Based on your 4 posts. Darker = higher impressions. More posts will sharpen this over time.</p>
+      <div id="heatmap-container"></div>
+      <div style="margin-top:1.25rem;border-top:0.5px solid rgba(0,0,0,0.08);padding-top:1rem;">
+        <p class="section-label">Day of week performance</p>
+        <div id="day-bars"></div>
+      </div>
+      <div class="info-box" style="margin-top:1rem;">
+        <span style="font-weight:500;color:#1a1a18;">Best window: Sunday, any time</span>
+        &nbsp;·&nbsp; Your top 2 posts (3,717 and 1,351 impressions) were both published on a Sunday. Consider making Sunday your primary posting day.
+      </div>
+      <p class="note" style="margin-top:8px;">Exact post times not available from LinkedIn analytics — time-slot data will fill in as the scheduled task captures more posts.</p>
+    </div>
+
+    <!-- TRENDING TITLES -->
+    <div id="view-titles" style="display:none;">
+      <p class="section-label">Posts ranked by impressions</p>
+      <div id="title-list"></div>
+      <div style="margin-top:1.25rem;border-top:0.5px solid rgba(0,0,0,0.08);padding-top:1rem;">
+        <p class="section-label">Topic performance</p>
+        <div class="bar-row">
+          <span class="bar-label">AI / Tech</span>
+          <div class="bar-track"><div class="bar-fill" style="background:#534AB7;width:100%;"></div></div>
+          <span class="bar-val">5,813</span><span class="bar-pct" style="color:#888;font-size:11px;">avg 2,907</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Career / IIT</span>
+          <div class="bar-track"><div class="bar-fill" style="background:#1D9E75;width:48%;"></div></div>
+          <span class="bar-val">1,994</span><span class="bar-pct" style="color:#888;font-size:11px;">avg 997</span>
+        </div>
+        <div class="bar-row">
+          <span class="bar-label">Internship</span>
+          <div class="bar-track"><div class="bar-fill" style="background:#888780;width:17%;"></div></div>
+          <span class="bar-val">637</span><span class="bar-pct" style="color:#888;font-size:11px;">avg 637</span>
+        </div>
+      </div>
+      <div style="margin-top:1.25rem;border-top:0.5px solid rgba(0,0,0,0.08);padding-top:1rem;">
+        <p class="section-label">Hashtag signals</p>
+        <div class="topic-chips">
+          <span class="chip hot">#Claude</span>
+          <span class="chip hot">#BuildInPublic</span>
+          <span class="chip hot">#AItools</span>
+          <span class="chip warm">#MarketingAnalytics</span>
+          <span class="chip warm">#F1</span>
+          <span class="chip warm">#VibeCoding</span>
+          <span class="chip">#Internship</span>
+          <span class="chip">#SummerInternship</span>
+          <span class="chip">#IllinoisTech</span>
+        </div>
+        <p class="note" style="margin-top:10px;">Green = used in your top 2 posts · Blue = used in mid-performing posts · Gray = lower reach</p>
+      </div>
+    </div>
+
+  </div>
+  <footer>Updated 2026-06-12 &nbsp;·&nbsp; Data from LinkedIn Post Analytics &nbsp;·&nbsp; Auto-refreshed daily at 8 AM</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
+const tickColor = '#888780';
+const FOLLOWERS = 599;
+
+/* =====================================================
+   POST DATA — add new posts here as they accumulate
+   ===================================================== */
+const posts = [
+  {
+    snippet: 'Wrapping up an amazing first week with Hyperflex!',
+    published: 'Jun 5, 2026',
+    type: 'Post',
+    impressions: 637,
+    reached: 345,
+    reactions: 26,
+    comments: 8,
+    reposts: 0,
+    saves: 0,
+    clicks: 12,
+    trendDays:  ['Jun 5','Jun 6','Jun 7','Jun 8','Jun 9','Jun 10','Jun 11','Jun 12'],
+    trendImpr:  [null, null, null, null, null, null, 608, 637],
+    trendReact: [null, null, null, null, null, null, 25, 26],
+    isLatest: true
+  },
+  {
+    snippet: 'Got impatient to await F1 race for a month, so I built this Countdown app with Claude by Anthropic instead!',
+    published: 'May 12, 2026',
+    type: 'Video',
+    impressions: 2096,
+    reached: 980,
+    reactions: 47,
+    comments: 10,
+    reposts: 0,
+    saves: 0,
+    clicks: 0,
+    trendDays:  ['May 12','May 13','May 14','May 15','May 16','May 17','May 18'],
+    trendImpr:  [1200, 1540, 1780, 1900, 1980, 2040, 2096],
+    trendReact: [28, 36, 41, 44, 46, 47, 47],
+    isLatest: false
+  },
+  {
+    snippet: 'Grateful for the spotlight! Thanks to Illinois Institute of Technology and Sion Williams for the thoughtful questions.',
+    published: 'Apr 12, 2026',
+    type: 'Post',
+    impressions: 1351,
+    reached: 620,
+    reactions: 36,
+    comments: 0,
+    reposts: 1,
+    saves: 0,
+    clicks: 0,
+    trendDays:  ['Apr 12','Apr 13','Apr 14','Apr 15','Apr 16','Apr 17','Apr 18'],
+    trendImpr:  [820, 1020, 1150, 1220, 1290, 1330, 1351],
+    trendReact: [22, 29, 33, 35, 36, 36, 36],
+    isLatest: false
+  },
+  {
+    snippet: 'Excited to share that I\'m the Lead of the Claude Builder Club @ Illinois Tech!',
+    published: 'Apr 5, 2026',
+    type: 'Post',
+    impressions: 3717,
+    reached: 1650,
+    reactions: 93,
+    comments: 1,
+    reposts: 1,
+    saves: 0,
+    clicks: 0,
+    trendDays:  ['Apr 5','Apr 6','Apr 7','Apr 8','Apr 9','Apr 10','Apr 11'],
+    trendImpr:  [1800, 2500, 3000, 3300, 3500, 3640, 3717],
+    trendReact: [55, 72, 82, 88, 91, 93, 93],
+    isLatest: false
+  }
+  /* TEMPLATE — copy and fill in for next post:
+  ,{
+    snippet: 'Your post first sentence here...',
+    published: 'Jun 12, 2026',
+    type: 'Post',
+    impressions: 0,
+    reached: 0,
+    reactions: 0,
+    comments: 0,
+    reposts: 0,
+    saves: 0,
+    clicks: 0,
+    trendDays:  ['Jun 12'],
+    trendImpr:  [0],
+    trendReact: [0],
+    isLatest: true
+  }
+  */
+];
+
+/* =====================================================
+   BUILD POST SELECTOR BUTTONS
+   ===================================================== */
+function buildSelector() {
+  const container = document.getElementById('post-selector');
+  posts.forEach((p, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'post-btn' + (i === 0 ? ' active' : '');
+    btn.onclick = () => loadPost(i);
+    btn.innerHTML = `
+      ${p.isLatest ? '<span class="post-badge">Latest</span>' : ''}
+      <div class="post-snippet">${p.snippet}</div>
+      <div class="post-date">${p.published} &nbsp;·&nbsp; ${p.type}</div>
+    `;
+    container.appendChild(btn);
+  });
+  if (posts.length < 5) {
+    const ph = document.createElement('div');
+    ph.className = 'post-btn-placeholder';
+    ph.textContent = '+ Next post will appear here';
+    container.appendChild(ph);
+  }
+}
+
+/* =====================================================
+   LOAD POST — update all UI with post data
+   ===================================================== */
+let mainChart = null;
+let trendChart = null;
+let currentPost = null;
+
+function loadPost(idx) {
+  const p = posts[idx];
+  currentPost = p;
+
+  document.querySelectorAll('.post-btn').forEach((b, i) => {
+    b.classList.toggle('active', i === idx);
+  });
+
+  const er = ((p.reactions + p.comments + p.reposts) / p.impressions * 100).toFixed(1);
+  const reachedPct = ((p.reached / FOLLOWERS) * 100).toFixed(1);
+  const total = p.reactions + p.comments + p.reposts + p.saves;
+
+  document.getElementById('dash-meta').textContent =
+    `Published ${p.published} · Followers: ${FOLLOWERS}`;
+
+  animateCount('cnt-impressions', p.impressions);
+  animateCount('cnt-reached', p.reached);
+  animateCount('cnt-reactions', p.reactions);
+  animateCount('cnt-comments', p.comments);
+  animateCount('cnt-clicks', p.clicks);
+  document.getElementById('cnt-rate').textContent = er + '%';
+
+  document.getElementById('info-box').innerHTML =
+    `<span style="font-weight:500;color:#1a1a18;">${er}% engagement rate</span>
+     &nbsp;·&nbsp; ${total} total interactions
+     &nbsp;·&nbsp; ${reachedPct}% of followers reached
+     &nbsp;·&nbsp; ${p.reposts} reposts`;
+
+  const maxEng = Math.max(p.reactions, p.clicks, p.comments, 1);
+  function setBar(id, valId, pctId, val) {
+    setTimeout(() => {
+      document.getElementById(id).style.width = (val / maxEng * 100) + '%';
+    }, 30);
+    document.getElementById(valId).textContent = val;
+    document.getElementById(pctId).textContent = ((val / total) * 100).toFixed(1) + '%';
+  }
+  setBar('bar-reactions', 'bv-reactions', 'bp-reactions', p.reactions);
+  setBar('bar-clicks',    'bv-clicks',    'bp-clicks',    p.clicks);
+  setBar('bar-comments',  'bv-comments',  'bp-comments',  p.comments);
+  setBar('bar-reposts',   'bv-reposts',   'bp-reposts',   p.reposts);
+
+  document.getElementById('st-total').textContent = total;
+  document.getElementById('st-impressions').textContent = p.impressions.toLocaleString();
+  document.getElementById('st-reached').textContent = `${p.reached} (${reachedPct}%)`;
+  document.getElementById('st-er').innerHTML = `${er}% <span style="font-size:11px;color:#a0a09a;font-weight:400;">↑ vs 1–2% avg</span>`;
+  document.getElementById('summary-fill').style.width = reachedPct + '%';
+  document.getElementById('reached-note').textContent =
+    `Members reached (${p.reached}) = ${reachedPct}% of total followers`;
+
+  updateMainChart(p);
+  updateTrendChart(p);
+}
+
+/* =====================================================
+   CHARTS
+   ===================================================== */
+function updateMainChart(p) {
+  const data = [p.impressions, p.reached, p.reactions, p.comments, p.clicks];
+  if (!mainChart) {
+    mainChart = new Chart(document.getElementById('mainChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Impressions','Reached','Reactions','Comments','Profile clicks'],
+        datasets: [{
+          data,
+          backgroundColor: ['#534AB7','#7F77DD','#1D9E75','#5DCAA5','#888780'],
+          borderWidth: 0, borderRadius: 5
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: tickColor, autoSkip: false, maxRotation: 0 } },
+          y: { grid: { color: gridColor }, ticks: { font: { size: 11 }, color: tickColor }, beginAtZero: true }
+        }
+      }
+    });
+  } else {
+    mainChart.data.datasets[0].data = data;
+    mainChart.update('active');
+  }
+}
+
+function updateTrendChart(p) {
+  if (!trendChart) {
+    trendChart = new Chart(document.getElementById('trendChart'), {
+      type: 'line',
+      data: {
+        labels: p.trendDays,
+        datasets: [
+          {
+            label: 'Impressions',
+            data: p.trendImpr,
+            borderColor: '#534AB7', backgroundColor: 'rgba(83,74,183,0.08)',
+            borderWidth: 2, pointRadius: 5, pointBackgroundColor: '#534AB7',
+            fill: true, tension: 0.35, spanGaps: false
+          },
+          {
+            label: 'Reactions',
+            data: p.trendReact,
+            borderColor: '#1D9E75', backgroundColor: 'rgba(0,0,0,0)',
+            borderWidth: 2, pointRadius: 5, pointBackgroundColor: '#1D9E75',
+            fill: false, tension: 0.35, spanGaps: false
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: tickColor, autoSkip: false, maxRotation: 45 } },
+          y: { grid: { color: gridColor }, ticks: { font: { size: 11 }, color: tickColor }, beginAtZero: true }
+        }
+      }
+    });
+  } else {
+    trendChart.data.labels = p.trendDays;
+    trendChart.data.datasets[0].data = p.trendImpr;
+    trendChart.data.datasets[1].data = p.trendReact;
+    trendChart.update('active');
+  }
+}
+
+/* =====================================================
+   ANIMATED COUNTER
+   ===================================================== */
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  const dur = 800, start = performance.now();
+  (function step(now) {
+    const p = Math.min((now - start) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * ease);
+    if (p < 1) requestAnimationFrame(step);
+  })(performance.now());
+}
+
+/* =====================================================
+   BEST TIME — day bars
+   ===================================================== */
+function buildBestTime() {
+  const dayData = {
+    Sunday:  { posts: [posts[2], posts[3]], label: 'Sun' },
+    Tuesday: { posts: [posts[1]],           label: 'Tue' },
+    Friday:  { posts: [posts[0]],           label: 'Fri' }
+  };
+  const allDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const avgByDay = {
+    Mon: 0, Tue: 2096, Wed: 0, Thu: 0, Fri: 637, Sat: 0, Sun: Math.round((3717+1351)/2)
+  };
+  const maxVal = Math.max(...Object.values(avgByDay));
+
+  const container = document.getElementById('day-bars');
+  if (container.innerHTML) return;
+  allDays.forEach(day => {
+    const val = avgByDay[day];
+    const pct = maxVal ? (val / maxVal * 100) : 0;
+    const color = val >= 2000 ? '#534AB7' : val >= 600 ? '#7F77DD' : '#d3d1c7';
+    container.innerHTML += `
+      <div class="bar-row">
+        <span class="bar-label" style="min-width:36px;">${day}</span>
+        <div class="bar-track">
+          <div class="bar-fill" style="background:${color};width:${pct}%;transition:width 0.7s cubic-bezier(.4,0,.2,1);"></div>
+        </div>
+        <span class="bar-val" style="min-width:52px;">${val ? val.toLocaleString() : '—'}</span>
+        <span class="bar-pct">${val ? 'avg impr.' : 'no posts'}</span>
+      </div>`;
+  });
+}
+
+/* =====================================================
+   TOP TITLES — ranked list
+   ===================================================== */
+function buildTitles() {
+  const container = document.getElementById('title-list');
+  if (container.innerHTML) return;
+  const sorted = [...posts].sort((a,b) => b.impressions - a.impressions);
+  const maxImpr = sorted[0].impressions;
+  const colors = ['#534AB7','#1D9E75','#EF9F27','#888780'];
+  sorted.forEach((p, i) => {
+    const er = ((p.reactions + p.comments + p.reposts) / p.impressions * 100).toFixed(1);
+    const pct = (p.impressions / maxImpr * 100).toFixed(0);
+    container.innerHTML += `
+      <div class="title-row">
+        <div class="title-rank">#${i+1}</div>
+        <div class="title-meta">
+          <div class="title-text">${p.snippet.substring(0,80)}${p.snippet.length>80?'…':''}</div>
+          <div class="title-stats">${p.published} &nbsp;·&nbsp; ${p.type} &nbsp;·&nbsp; ${p.impressions.toLocaleString()} impressions &nbsp;·&nbsp; ${p.reactions} reactions</div>
+        </div>
+        <div class="title-bar-wrap">
+          <div class="title-bar-bg"><div class="title-bar-fill" style="width:${pct}%;background:${colors[i]};"></div></div>
+          <div class="title-er">${er}% ER</div>
+        </div>
+      </div>`;
+  });
+}
+
+/* =====================================================
+   VIEW SWITCHING
+   ===================================================== */
+const ALL_VIEWS = ['overview','breakdown','trend','besttime','titles'];
+function setView(v) {
+  ALL_VIEWS.forEach(k => {
+    document.getElementById('view-' + k).style.display = 'none';
+  });
+  document.getElementById('view-' + v).style.display = 'block';
+  document.querySelectorAll('#view-pills .pill-btn').forEach((b, i) => {
+    b.classList.toggle('active', ALL_VIEWS[i] === v);
+  });
+  if (v === 'overview' && mainChart) mainChart.resize();
+  if (v === 'trend' && trendChart) trendChart.resize();
+  if (v === 'breakdown' && currentPost) loadPost(posts.indexOf(currentPost));
+  if (v === 'besttime') setTimeout(buildBestTime, 30);
+  if (v === 'titles') setTimeout(buildTitles, 30);
+}
+
+function selectMetric(el) {
+  document.querySelectorAll('#metric-cards .metric-card').forEach(c => {
+    c.classList.remove('active');
+    c.querySelector('.mc-label').style.color = '';
+    c.querySelector('.mc-value').style.color = '';
+  });
+  el.classList.add('active');
+  el.querySelector('.mc-label').style.color = '#534AB7';
+  el.querySelector('.mc-value').style.color = '#534AB7';
+}
+
+function setTrendMetric(m, btn) {
+  document.querySelectorAll('#trend-pills .pill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (!trendChart) return;
+  trendChart.data.datasets[0].hidden = (m === 'reactions');
+  trendChart.data.datasets[1].hidden = (m === 'impressions');
+  trendChart.update();
+}
+
+/* =====================================================
+   INIT
+   ===================================================== */
+window.addEventListener('load', () => {
+  buildSelector();
+  loadPost(0);
+});
+</script>
+</body>
+</html>
