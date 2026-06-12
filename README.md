@@ -6,7 +6,7 @@ An automated LinkedIn post analytics system built with **Claude Cowork** and **C
 
 ## Demo
 
-<video src="Demo video.mov" controls width="100%"></video>
+![Demo](demo.gif)
 
 ---
 
