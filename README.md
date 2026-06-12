@@ -6,9 +6,7 @@ An automated LinkedIn post analytics system built with **Claude Cowork** and **C
 
 ## Demo
 
-<video src="Demo video.mov" controls width="100%"></video>
-
-> **Note:** If the video doesn't play inline, [click here to download and view it](Demo%20video.mov). When pushing to GitHub, drag `Demo video.mov` into any issue or PR comment box — GitHub will host it and give you a permanent URL to paste here instead.
+![LinkedIn Analytics Tracker demo](demo.gif)
 
 ---
 
