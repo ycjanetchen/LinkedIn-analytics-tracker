@@ -6,7 +6,7 @@ An automated LinkedIn post analytics system built with **Claude Cowork** and **C
 
 ## Demo
 
-![LinkedIn Analytics Tracker demo](demo.gif)
+<video src="Demo video.mov" controls width="100%"></video>
 
 ---
 
